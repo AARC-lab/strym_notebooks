@@ -42,7 +42,9 @@ def main(argv):
         if(opt == '-h'):
             print('\n{} [OPTIONS]'.format(__file__))
             print('\t -h, --help\t\t Get help')
-            print('\t -i, --input\t\t\t input CAN CSV file')
+            print('\t -i, --input\t\t input CAN CSV file')
+            print('\t -s, --savefig\t\t Save figure in the location where input file is')
+            print('\t -w, --showfig\t\t Display the figure')
             sys.exit()
         elif(opt in ("-i", "--input")):
             csvfile = arg
