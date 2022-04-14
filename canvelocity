@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# Author : Rahul Bhadani
+# Initial Date: Apr 14, 2022
+
+__author__ = 'Rahul Bhadani'
+__email__  = 'rahulbhadani@email.arizona.edu'
+
+import numpy as np
+import pandas as pd
+import glob
+import os
+import strym
+from strym import strymread
+import seaborn as sea
+import matplotlib.pyplot as plt
+import matplotlib
+
+
+import sys, getopt
+import ntpath
+def main(argv):
+
+    csvfile = None
+    dbcfile = None
+    save_fig = False
+    show_fig = False
+    print('\n\n\n===============================\n        canvelocity       \n===============================\n')
+    try:
+        opts, args = getopt.getopt(argv,"wshi:d:",["input=", "dbcfile="])
+        if len(opts) == 0:
+            print('Check options by typing:\n{} -h'.format(__file__))
+            sys.exit()
+
+    except getopt.GetoptError:
+        print('\nCheck options by typing:\n{} -h'.format(__file__))
+        sys.exit(2)
+
+    #print("OPTS: {}".format(opts))
+    for opt, arg in opts:
+        if(opt == '-h'):
+            print('\n{} [OPTIONS]'.format(__file__))
+            print('\t -h, --help\t\t Get help')
+            print('\t -i, --input\t\t\t input CAN CSV file')
+            sys.exit()
+        elif(opt in ("-i", "--input")):
+            csvfile = arg
+        elif(opt in ("-d", "--dbcfile")):
+            dbcfile = arg
+        elif(opt in ("-s", "--savefig")):
+            save_fig = True
+        elif(opt in ("-w", "--showfig")):
+            show_fig = True
+
+    print(save_fig)
+
+    
+    # check if the csvfile exists
+    if csvfile is not None:
+        if not os.path.exists(csvfile):
+            print("Input CSV file doesn't exist. Exiting ... ")
+            sys.exit()
+        
+        r = None
+        if dbcfile is None:
+            r = strymread(csvfile)
+        else:
+            r = strymread(csvfile, dbcfile = dbcfile)
+        
+        # get the speed
+        s = r.speed()
+        acc_state = r.acc_state(plot =False)
+
+        #filter acc for enabled
+        acc_enabled = acc_state[acc_state['Message'] == 6]
+
+        acc_enabled_chunks = strymread.create_chunks(acc_enabled, continuous_threshold = 5.0, plot=False, column_of_interest = 'Time')
+        
+        speed_df = []
+        for chunks in acc_enabled_chunks:
+            start_time = chunks.Time.iloc[0]
+            end_time = chunks.Time.iloc[-1]
+
+            df_temp = s[(s.Time >= start_time) & (s.Time <=end_time)]
+            speed_df.append(df_temp)
+
+        speed_df_acc_enabled = pd.concat(speed_df)
+        fig, ax = strymread.scatterts([s, speed_df_acc_enabled], return_fig = True, labels=['ACC NOT ENABLED', 'ACC ENABLED'])
+        Index = s.index.strftime('%m/%d/%Y, %r')
+        cb_indices = np.linspace(0, s.shape[0]-1, 15, dtype=int)
+        cb =Index[cb_indices]
+        cbtime = s.Time[cb_indices].values
+        plt.xticks(cbtime-cbtime[0], cb, rotation = 45)
+        if save_fig:
+            plt.savefig(csvfile[0:-4] + '_speed_plot.png', bbox_inches='tight')
+            plt.savefig(csvfile[0:-4] + '_speed_plot.pdf', bbox_inches='tight')
+        if show_fig:
+            plt.show()
+
+if __name__ == "__main__":
+   main(sys.argv[1:])
+
+
+
